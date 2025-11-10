@@ -1,7 +1,7 @@
+// https://www.codewars.com/kata/5656b6906de340bd1b0000ac/javascript
 const a = "xyaabbbccccdefww"
 const b = "xxxxyyyyabklmopq"
 // longest(a, b) -> "abcdefklmopqwxy"
-
 //Convertimos a array para manipularlo. (con la estructura de datos Set no hace falta separarlo )
 // const c = (a+b).split('')
 // Quitamos los valores duplicados con Set y con el operador spread [...] lo convertimos a array.
