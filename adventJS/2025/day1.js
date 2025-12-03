@@ -1,0 +1,23 @@
+// https://adventjs.dev/es/challenges/2025/1
+
+/*
+Santa ha recibido una lista de regalos, pero algunos están defectuosos. Un regalo es defectuoso si su nombre contiene el carácter #.
+
+Ayuda a Santa escribiendo una función que reciba una lista de nombres de regalos y devuelva una nueva lista que solo contenga los regalos sin defectos.
+
+*/
+
+// const gifts = ['car', 'doll#arm', 'ball', '#train']
+// const gifts = []
+const gifts = ['#broken', '#rusty']
+
+if(!gifts.length){
+    console.log(gifts);
+}else{
+    let giftsCorrects=[];
+    gifts.forEach(word => {
+        if (word.includes("#")) return;
+        giftsCorrects.push(word);
+    });
+    console.log(giftsCorrects);
+}
