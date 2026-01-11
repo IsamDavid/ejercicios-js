@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Automatizador de Facturación</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background-color: #f4f4f9; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 200px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; }
+        .controls { margin: 1rem 0; display: flex; gap: 1rem; align-items: center; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .status-bar { margin-top: 1rem; padding: 10px; background: #e9ecef; border-radius: 4px; font-weight: bold; }
+        .log-area { margin-top: 1rem; height: 300px; overflow-y: auto; background: #2d2d2d; color: #0f0; padding: 1rem; font-family: monospace; border-radius: 4px; }
+        .error { color: #ff4444; }
+        .success { color: #00cc00; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🚀 Facturación Automática (1 por 1)</h2>
+    <p>Pega aquí la lista de IDs directamente del Excel:</p>
+    
+    <textarea id="inputIds" placeholder="10205&#10;10205&#10;94103..."></textarea>
+    
+    <div class="controls">
+        <label>Ciclo (Cycle): <input type="number" id="cycleInput" value="5" style="width: 50px; padding: 5px;"></label>
+        <button id="btnProcesar" onclick="iniciarProceso()">Comenzar Proceso</button>
+    </div>
+
+    <div id="statusBar" class="status-bar">Esperando datos...</div>
+    <div id="logArea" class="log-area"></div>
+</div>
+
+<script>
+    // URL de TU backend (donde pusiste el código de la Parte 1)
+    const API_URL = 'http://localhost:3001/api/facturar-orden'; 
+
+    async function iniciarProceso() {
+        const input = document.getElementById('inputIds').value;
+        const cycle = document.getElementById('cycleInput').value;
+        const btn = document.getElementById('btnProcesar');
+        const log = document.getElementById('logArea');
+        const status = document.getElementById('statusBar');
+
+        if (!input.trim()) return alert("Por favor pega algunos IDs.");
+
+        // 1. Transformación (Sustituye a la IA)
+        const listaProcesada = transformarIDs(input);
+        
+        log.innerHTML = `> IDs detectados y transformados: ${listaProcesada.length}<br>--------------------------------<br>`;
+        btn.disabled = true; // Bloquear botón para que no le den doble click
+        
+        let exitosos = 0;
+        let fallidos = [];
+
+        // 2. Bucle 1 a 1 (La cola asíncrona)
+        for (let i = 0; i < listaProcesada.length; i++) {
+            const idActual = listaProcesada[i];
+            
+            // Actualizar barra de estado
+            status.innerText = `Procesando ${i + 1} de ${listaProcesada.length} | Éxitos: ${exitosos} | Fallos: ${fallidos.length}`;
+            log.innerHTML += `> Enviando: ${idActual}... `;
+
+            try {
+                // Hacemos la petición a TU servidor
+                const respuesta = await enviarAlBackend(idActual, cycle);
+                
+                if (respuesta.success) {
+                    log.innerHTML += `<span class="success">OK ✅</span><br>`;
+                    exitosos++;
+                } else {
+                    throw new Error("El servidor externo rechazó la orden");
+                }
+
+            } catch (error) {
+                log.innerHTML += `<span class="error">ERROR ❌</span><br>`;
+                fallidos.push(idActual);
+            }
+
+            // Scroll automático hacia abajo
+            log.scrollTop = log.scrollHeight;
+
+            // 3. Pequeña pausa de seguridad (500ms) para no saturar
+            await new Promise(r => setTimeout(r, 500));
+        }
+
+        // Fin del proceso
+        status.innerText = `PROCESO TERMINADO. Éxitos: ${exitosos} | Fallos: ${fallidos.length}`;
+        btn.disabled = false;
+        
+        if (fallidos.length > 0) {
+            log.innerHTML += `<br><strong class="error">ATENCIÓN: Fallaron estos IDs:</strong><br>${fallidos.join('<br>')}`;
+            alert("El proceso terminó con algunos errores. Revisa el log.");
+        } else {
+            alert("¡Todo se procesó correctamente!");
+        }
+    }
+
+    // --- LÓGICA DE TRANSFORMACIÓN (Aquí está el truco de los repetidos) ---
+    function transformarIDs(textoRaw) {
+        // Convertimos el texto en array y quitamos espacios vacíos
+        const lineas = textoRaw.split(/\n/).map(s => s.trim()).filter(s => s !== "");
+        
+        const contadores = {}; // Diccionario para llevar la cuenta
+        const resultado = [];
+
+        lineas.forEach(id => {
+            // Si no existe en el diccionario, empieza en 0
+            if (!contadores[id]) {
+                contadores[id] = 0;
+            }
+            
+            // Incrementamos el contador para este ID específico
+            contadores[id]++;
+
+            // Formato: A - ID - CONTADOR - 1
+            const idFormateado = `A-${id}-${contadores[id]}-1`;
+            resultado.push(idFormateado);
+        });
+
+        return resultado;
+    }
+
+    // Función auxiliar para llamar al backend
+    async function enviarAlBackend(id, cycle) {
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idOrden: id, cycle: cycle })
+            });
+            if (!res.ok) throw new Error('Error en la petición');
+            return await res.json();
+        } catch (e) {
+            return { success: false };
+        }
+    }
+</script>
+
+</body>
+</html>
